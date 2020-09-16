@@ -1,3 +1,17 @@
+//+--------------------------------------------------------------------------
+//
+// NightDriver - (c) 2018 Dave Plummer.  All Rights Reserved.
+//
+// File:        LED Episode 06
+//
+// Description:
+//
+//   Draws on a 144px/m strip
+//
+// History:     Sep-15-2020     davepl      Created
+//
+//---------------------------------------------------------------------------
+
 #include <Arduino.h>
 #include <U8g2lib.h>
 #define FASTLED_INTERNAL
@@ -7,13 +21,18 @@
 #define OLED_DATA   4
 #define OLED_RESET  16
 
-#define NUM_LEDS    20          // FastLED definitions
+#define NUM_LEDS    45          // FastLED definitions
 #define LED_PIN     5
 
 CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
 
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C g_OLED(U8G2_R2, OLED_RESET, OLED_CLOCK, OLED_DATA);
 int g_lineHeight = 0;
+int g_Brightness = 64;           // 0-255 brightness scale
+
+#include "twinkle.h"
+#include "marquee.h"
+#include "bounce.h"
 
 // FramesPerSecond
 //
@@ -43,7 +62,7 @@ void setup()
   g_lineHeight = g_OLED.getFontAscent() - g_OLED.getFontDescent();        // Descent is a negative number so we add it to the total
 
   FastLED.addLeds<WS2812B, LED_PIN, GRB>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
-  FastLED.setBrightness(4);
+  FastLED.setBrightness(255);
 }
 
 void loop() 
@@ -51,9 +70,7 @@ void loop()
   bool bLED = 0;
   double fps = 0;
 
-  uint8_t initialHue = 0;
-  const uint8_t deltaHue = 16;
-  const uint8_t hueDensity = 4;
+  InitBounce();
 
   for (;;)
   {
@@ -64,16 +81,21 @@ void loop()
 
     // Handle OLED drawing
 
-    g_OLED.clearBuffer();
-    g_OLED.setCursor(0, g_lineHeight);
-    g_OLED.printf("FPS: %.1lf", fps);
-    g_OLED.sendBuffer();
+    static unsigned long msLastUpdate = millis();
+    if (millis() - msLastUpdate > 250)
+    {
+      g_OLED.clearBuffer();
+      g_OLED.setCursor(0, g_lineHeight);
+      g_OLED.printf("FPS: %.1lf", fps);
+      g_OLED.sendBuffer();
+      msLastUpdate = millis();
+    }
 
     // Handle LEDs
 
-    fill_rainbow(g_LEDs, NUM_LEDS, initialHue += hueDensity, deltaHue);
+    DrawBounce();
 
-    FastLED.show();
+    FastLED.show(g_Brightness);
 
     double dEnd = millis() / 1000.0;
     fps = FramesPerSecond(dEnd - dStart);
