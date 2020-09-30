@@ -1,6 +1,6 @@
 //+--------------------------------------------------------------------------
 //
-// NightDriver - (c) 2018 Dave Plummer.  All Rights Reserved.
+// NightDriver - (c) 2020 Dave Plummer.  All Rights Reserved.
 //
 // File:        
 //
