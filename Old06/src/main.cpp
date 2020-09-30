@@ -1,20 +1,21 @@
 //+--------------------------------------------------------------------------
 //
-// NightDriver - (c) 2018 Dave Plummer.  All Rights Reserved.
+// Arduino LED Tutorial - (c) 2020 Dave Plummer.  All Rights Reserved.
 //
-// File:        LED Episode 06
+// File:        main.cpp      
 //
 // Description:
 //
-//   Draws sample effects on a an addressable strip using FastLED
+//   Draws sample effects on an addressable RGB strip and prints stats to
+//   the TFT display on a Heltec module.
 //
-// History:     Sep-15-2020     davepl      Created
+// History:     Sep-25-2020     davepl      Created
 //
 //---------------------------------------------------------------------------
 
-#include <Arduino.h>            // Arduino Framework
-#include <U8g2lib.h>            // For text on the little on-chip OLED
-#define FASTLED_INTERNAL        // Suppress build banner
+#include <Arduino.h>
+#include <U8g2lib.h>
+#define FASTLED_INTERNAL
 #include <FastLED.h>
 
 #define OLED_CLOCK  15          // Pins for the OLED display
@@ -26,13 +27,11 @@
 
 CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
 
+#include "comet.h"
+
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C g_OLED(U8G2_R2, OLED_RESET, OLED_CLOCK, OLED_DATA);
 int g_lineHeight = 0;
-int g_Brightness = 255;           // 0-255 LED brightness scale
-
-#include "twinkle.h"
-#include "marquee.h"
-#include "comet.h"
+int g_Brightness = 255;          // 0-255 brightness scale 
 
 // FramesPerSecond
 //
@@ -70,7 +69,9 @@ void loop()
   bool bLED = 0;
   double fps = 0;
 
-//  InitBounce();
+  uint8_t initialHue = 0;
+  const uint8_t deltaHue = 16;
+  const uint8_t hueDensity = 4;
 
   for (;;)
   {
@@ -82,7 +83,7 @@ void loop()
     // Handle OLED drawing
 
     static unsigned long msLastUpdate = millis();
-    if (millis() - msLastUpdate > 500)
+    if (millis() - msLastUpdate > 250)
     {
       g_OLED.clearBuffer();
       g_OLED.setCursor(0, g_lineHeight);
@@ -90,14 +91,16 @@ void loop()
       g_OLED.sendBuffer();
       msLastUpdate = millis();
     }
-
+    
     // Handle LEDs
 
-    DrawTwinkle();
+    DrawComet();
 
-    FastLED.show(g_Brightness);
+    FastLED.setBrightness(g_Brightness);
+    FastLED.show();
 
     double dEnd = millis() / 1000.0;
     fps = FramesPerSecond(dEnd - dStart);
   }
 }
+

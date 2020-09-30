@@ -2,18 +2,17 @@
 //
 // NightDriver - (c) 2018 Dave Plummer.  All Rights Reserved.
 //
-// File:        meteor.h
+// File:        
 //
 // Description:
 //
-//   Draws meteos on an addressable LED strip
+//   
 //
 // History:     Sep-15-2020     davepl      Created
 //
 //---------------------------------------------------------------------------
 
 #include <Arduino.h>
-#include <U8g2lib.h>
 #define FASTLED_INTERNAL
 #include <FastLED.h>
 
