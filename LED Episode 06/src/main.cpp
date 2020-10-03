@@ -33,6 +33,7 @@ int g_Brightness = 255;           // 0-255 LED brightness scale
 #include "twinkle.h"
 #include "marquee.h"
 #include "comet.h"
+#include "bounce.h"
 
 // FramesPerSecond
 //
@@ -70,14 +71,14 @@ void loop()
   bool bLED = 0;
   double fps = 0;
 
-//  InitBounce();
+  BouncingBallEffect balls(NUM_LEDS, 1);
 
-  for (;;)
+  while (true)
   {
-    bLED = !bLED;                                                         // Blink the LED off and on  
+    bLED = !bLED;                                      // Blink the LED off and on  
     digitalWrite(LED_BUILTIN, bLED);
 
-    double dStart = millis() / 1000.0;                                    // Display a frame and calc how long it takes
+    double dStart = millis() / 1000.0;                 // Display a frame and calc how long it takes
 
     // Handle OLED drawing
 
@@ -93,7 +94,7 @@ void loop()
 
     // Handle LEDs
 
-    DrawTwinkle();
+    balls.Draw();
 
     FastLED.show(g_Brightness);
 
