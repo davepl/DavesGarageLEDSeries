@@ -2,13 +2,14 @@
 //
 // NightDriver - (c) 2018 Dave Plummer.  All Rights Reserved.
 //
-// File:        LED Episode 06
+// File:        LED Episode 07
 //
 // Description:
 //
 //   Draws sample effects on a an addressable strip using FastLED
 //
 // History:     Sep-15-2020     davepl      Created
+//              Oct-15-2020     davepl      Revised for Episode 07
 //
 //---------------------------------------------------------------------------
 
@@ -30,7 +31,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C g_OLED(U8G2_R2, OLED_RESET, OLED_CLOCK, OLED
 int g_lineHeight = 0;
 int g_Brightness = 255;           // 0-255 LED brightness scale
 
-
+#include "bounce.h"
 
 // FramesPerSecond
 //
@@ -44,49 +45,6 @@ double FramesPerSecond(double seconds)
   framesPerSecond = (framesPerSecond * .9) + (1.0 / seconds * .1);
   return framesPerSecond;
 }
-
-void DrawPixels(double fPos, double count, CRGB color)
-{
-    double availFirstPixel = 1.0 - (fPos - (long)(fPos));
-    double amtFirstPixel = min(availFirstPixel, count);
-    count = min(count, FastLED.size()-fPos);
-    if (fPos >= 0 && fPos < FastLED.size())
-    {
-        CRGB frontColor = color;
-        frontColor.fadeToBlackBy(255 * (1.0 - amtFirstPixel));
-        FastLED.leds()[(uint)fPos] += frontColor;
-    }
-
-    fPos += amtFirstPixel;
-    count -= amtFirstPixel;
-
-    while (count >= 1.0)
-    {
-        if (fPos >= 0 && fPos < FastLED.size())
-        {
-            FastLED.leds()[(uint)fPos] += color;
-            count -= 1.0;
-        }
-        fPos += 1.0;
-    }
-
-    if (count > 0.0)
-    {
-        if (fPos >= 0 && fPos < FastLED.size())
-        {
-            CRGB backColor = color;
-            backColor.fadeToBlackBy(255 * (1.0 - count));
-            FastLED.leds()[(uint)fPos] += backColor;
-        }
-    }
-}
-
-void set_max_power_indicator_LED(uint8_t);
-
-#include "twinkle.h"
-#include "marquee.h"
-#include "comet.h"
-#include "bounce.h"
 
 void setup() 
 {
@@ -104,35 +62,39 @@ void setup()
 
   FastLED.addLeds<WS2812B, LED_PIN, GRB>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
   FastLED.setBrightness(g_Brightness);
+
   FastLED.setMaxPowerInMilliWatts(900);
-  set_max_power_indicator_LED(LED_BUILTIN);
 }
 
 void loop() 
 {
+  bool bLED = 0;
   double fps = 0;
 
-  BouncingBallEffect balls(NUM_LEDS, 3, 0, false, 8.0);
+  BouncingBallEffect balls(NUM_LEDS, 5, 48, true);
 
   while (true)
   {
+    bLED = !bLED;                                      // Blink the LED off and on  
+    digitalWrite(LED_BUILTIN, bLED);
+
     double dStart = millis() / 1000.0;                 // Display a frame and calc how long it takes
 
-    // Handle LEDs
+    // Draw LEDs here
 
     balls.Draw();
 
     // Handle OLED drawing
 
-    uint32_t milliwatts = calculate_unscaled_power_mW(g_LEDs, NUM_LEDS);
+    uint32_t milliwatts = calculate_unscaled_power_mW(g_LEDs, NUM_LEDS);   // How much power are we pulling?
 
     static unsigned long msLastUpdate = millis();
-    if (millis() - msLastUpdate > 500)
+    if (millis() - msLastUpdate > 250)
     {
       g_OLED.clearBuffer();
       g_OLED.setCursor(0, g_lineHeight);
-      g_OLED.printf("FPS: %.1lf", fps);
-      g_OLED.setCursor(1, g_lineHeight * 2);
+      g_OLED.printf("FPS  : %.1lf", fps);
+      g_OLED.setCursor(0, g_lineHeight * 2);
       g_OLED.printf("Power: %u mW", milliwatts);
       g_OLED.sendBuffer();
       msLastUpdate = millis();

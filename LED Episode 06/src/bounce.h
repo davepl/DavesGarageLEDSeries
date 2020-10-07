@@ -12,6 +12,20 @@
 //
 //---------------------------------------------------------------------------
 
+//+--------------------------------------------------------------------------
+//
+// NightDriver - (c) 2020 Dave Plummer.  All Rights Reserved.
+//
+// File:        
+//
+// Description:
+//
+//   
+//
+// History:     Oct-04-2020     davepl      Created
+//
+//---------------------------------------------------------------------------
+
 #include <sys/time.h>                               // For time-of-day
 
 #include <Arduino.h>
@@ -31,62 +45,71 @@ extern CRGB g_LEDs[];
 
 static const CRGB ballColors[] =
 {
-	CRGB::Green,
-	CRGB::Red,
-	CRGB::Blue,
-	CRGB::Orange,
-	CRGB::Indigo,
-	CRGB::Cyan
+  CRGB::Green,
+  CRGB::Red,
+  CRGB::Blue,
+  CRGB::Orange,
+  CRGB::Indigo,
+  CRGB::Cyan
 };
 
 class BouncingBallEffect 
 {
 private:
 
-	size_t	_iOffset;
+  double InitialBallSpeed(double height) const
+  {
+    return sqrt(-2 * Gravity * height);
+  }
+
 	size_t  _cLength;
 	size_t  _cBalls;
   byte    _Fade;
 	bool    _bMirrored;
+  double  _SpeedKnob;
 
-	const double Gravity = -9.81;
-	const double StartHeight = 1;
-	const double ImpactVelocityStart = sqrt(-2 * Gravity * StartHeight);
-	
-	vector<double> ClockTimeAtLastBounce, TimeSinceLastBounce, Height, BallSpeed, Dampening;
-	vector<CRGB> Colors;
-	 
-  // Time - Return current time in the floating form popular under Unix, which is the number of seconds 
-  //        since January 1, 1970.  That way we can treat the elapsed time as simple seconds.
+	const double Gravity = -9.81;                                       // Because PHYSICS!
+	const double StartHeight = 1;                                       // Drop balls from max height to start
+	const double ImpactVelocityStart = InitialBallSpeed(StartHeight);   // Speed for  a
+	const double SpeedKnob = 4;                                         // High number will slow effect down
 
-  double UnixStyleTime() const
+	vector<double> ClockTimeAtLastBounce, Height, BallSpeed, Dampening; // When the ball last bounced
+
+  // Time - Return current time in floating form for easier calcs than ms 
+
+  double Time() const
   {
     timeval tv = { 0 };
     gettimeofday(&tv, nullptr);
-    return tv.tv_usec / (double)1000000 +(double)tv.tv_sec;
+    return (double)(tv.tv_usec / (double)1000000 +(double)tv.tv_sec);
   }
+
 
 public:
 
-	BouncingBallEffect(size_t cLength, size_t ballCount = 3, byte fade = 0, bool bMirrored = true)
-		: _cLength(cLength-1),                // Reserve one LED for floating point fraction draw
-		  _cBalls(ballCount),                 // The number of balls
-      _Fade(fade),                        // The rate at which to fade the strip between passes
-		  _bMirrored(bMirrored),              // If we should mirror the drawing from both edges
-      ClockTimeAtLastBounce(ballCount),   // Size the arrays we need to hold data for each ball
-   		Height(ballCount),
-	  	BallSpeed(ballCount),
-		  Dampening(ballCount),
-		  Colors(ballCount)
+  // BouncingBallEffect
+  //
+  // Caller specs strip length, number of balls, persistence level (255 is least), and whether
+  // the balls should be drawn mirrored from each side. 
+
+	BouncingBallEffect(size_t cLength, size_t ballCount = 3, byte fade = 0, bool bMirrored = false, double SpeedKnob = 4.0)
+		: _cLength(cLength-1),          // Reserve one LED for floating point fraction draw
+		  _cBalls(ballCount),
+      _Fade(fade),
+		  _bMirrored(bMirrored),
+      _SpeedKnob(SpeedKnob),
+      ClockTimeAtLastBounce(ballCount),
+      Height(ballCount),
+      BallSpeed(ballCount),
+      Dampening(ballCount)
 	{
+
 		for (size_t i = 0; i < ballCount; i++)
 		{
-			Height[i] 					        = StartHeight;
-			ClockTimeAtLastBounce[i]    = UnixStyleTime();
-			Dampening[i] 				        = 0.90 - i / pow(_cBalls, 2);
-			BallSpeed[i] 			          = ImpactVelocityStart * Dampening[i];
-			TimeSinceLastBounce[i] 		  = 0;
-			Colors[i] 					        = ballColors[i % ARRAYSIZE(ballColors)];
+			Height[i] 					        = StartHeight;                    // Current ball height
+			ClockTimeAtLastBounce[i]    = Time();                         // When the last time it hit ground was              
+			Dampening[i] 				        = 1.0 - i / pow(_cBalls, 2);     // Each ball bounces differently
+			BallSpeed[i] 			          = InitialBallSpeed(Height[i]);    // Don't dampen initial launch to they go together
 		}
 	}
 
@@ -108,32 +131,30 @@ public:
       FastLED.clear();
     }
 
-    // Draw each of balls
+    // Draw each of the three balls
     for (size_t i = 0; i < _cBalls; i++)
     {     
-      TimeSinceLastBounce[i] = (UnixStyleTime() - ClockTimeAtLastBounce[i]);
-      Height[i] = 0.5 * Gravity * pow(TimeSinceLastBounce[i], 2.0) + BallSpeed[i] * TimeSinceLastBounce[i];
+      double TimeSinceLastBounce = (Time() - ClockTimeAtLastBounce[i]) / _SpeedKnob;
+      Height[i] = 0.5 * Gravity * pow(TimeSinceLastBounce, 2.0) + BallSpeed[i] * TimeSinceLastBounce;
 
       if (Height[i] < 0)
       {
         Height[i] = 0;
         BallSpeed[i] = Dampening[i] * BallSpeed[i];
-        ClockTimeAtLastBounce[i] = UnixStyleTime();
+        ClockTimeAtLastBounce[i] = Time();
 
-        if (BallSpeed[i] < 0.01)
-          BallSpeed[i] = ImpactVelocityStart;
+        if (BallSpeed[i] < 1.0)
+          BallSpeed[i] = InitialBallSpeed(StartHeight) * Dampening[i];
       }
 
-      size_t position = (size_t) round(Height[i] * (_cLength - 1) / StartHeight);
-      
-      g_LEDs[position]   = Colors[i];
-      g_LEDs[position+1] = Colors[i];
-      
+      static const CRGB ballColors[] = { CRGB::Red, CRGB::Blue, CRGB::Green, CRGB::Orange, CRGB::Violet };
+      CRGB color = ballColors[i % ARRAYSIZE(ballColors)];
+
+      double position = (Height[i] * (_cLength - 1.0) / StartHeight);
+      DrawPixels(position, 1, color);
       if (_bMirrored) 
-      {
-        g_LEDs[_cLength - 1 - position] = Colors[i];
-        g_LEDs[_cLength -  position]    = Colors[i];
-      }
+        DrawPixels(_cLength - 1 - position, 1, color);
+
     }
     delay(20);
   }
