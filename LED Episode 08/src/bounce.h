@@ -23,8 +23,6 @@ using namespace std;
 
 extern CRGB g_LEDs[];
 
-#define ARRAYSIZE(x) (sizeof(x)/sizeof(x[0]))   // Count elements in a static array
-
 static const CRGB ballColors [] =
 {
     CRGB::Green,
@@ -38,7 +36,7 @@ class BouncingBallEffect
 {
   private:
 
-    double InitialBallSpeed(double height) const
+    float InitialBallSpeed(float height) const
     {
         return sqrt(-2 * Gravity * height);         // Because MATH!
     }
@@ -48,19 +46,19 @@ class BouncingBallEffect
     byte    _fadeRate;
     bool    _bMirrored;
 
-    const double Gravity = -9.81;                   // Because PHYSICS!
-    const double StartHeight = 1;                   // Drop balls from max height initially
-    const double ImpactVelocity = InitialBallSpeed(StartHeight);
-    const double SpeedKnob = 4.0;                   // Higher values will slow the effect
+    const float Gravity = -9.81;                   // Because PHYSICS!
+    const float StartHeight = 1;                   // Drop balls from max height initially
+    const float ImpactVelocity = InitialBallSpeed(StartHeight);
+    const float SpeedKnob = 4.0;                   // Higher values will slow the effect
 
-    vector<double> ClockTimeAtLastBounce, Height, BallSpeed, Dampening;
+    vector<float> ClockTimeAtLastBounce, Height, BallSpeed, Dampening;
     vector<CRGB>   Colors;
 
-    static double Time()
+    static float Time()
     {
         timeval tv = { 0 };
         gettimeofday(&tv, nullptr);
-        return (double)(tv.tv_usec / 1000000.0 + (double) tv.tv_sec);
+        return (float)(tv.tv_usec / 1000000.0 + (float) tv.tv_sec);
     }
     
   public:
@@ -109,7 +107,7 @@ class BouncingBallEffect
 
         for (size_t i = 0; i < _cBalls; i++)
         {
-            double TimeSinceLastBounce = (Time() - ClockTimeAtLastBounce[i]) / SpeedKnob;
+            float TimeSinceLastBounce = (Time() - ClockTimeAtLastBounce[i]) / SpeedKnob;
 
             // Use standard constant acceleration function - https://en.wikipedia.org/wiki/Acceleration
             Height[i] = 0.5 * Gravity * pow(TimeSinceLastBounce, 2.0) + BallSpeed[i] * TimeSinceLastBounce;

@@ -22,7 +22,7 @@
 #define OLED_DATA   4
 #define OLED_RESET  16
 
-#define NUM_LEDS    45          // FastLED definitions
+#define NUM_LEDS    40          // FastLED definitions
 #define LED_PIN     5
 
 CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
@@ -30,21 +30,61 @@ CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C g_OLED(U8G2_R2, OLED_RESET, OLED_CLOCK, OLED_DATA);
 int g_lineHeight = 0;
 int g_Brightness = 255;           // 0-255 LED brightness scale
+int g_PowerLimit = 900;           // 900mW draw
 
-#include "bounce.h"
+#define TIMES_PER_SECOND(x) EVERY_N_MILLISECONDS(1000/x)
+#define ARRAYSIZE(x) (sizeof(x)/sizeof(x[0]))   
 
-// FramesPerSecond
+// FractionalColor
 //
-// Tracks a weighted average to smooth out the values that it calcs as the simple reciprocal
-// of the amount of time taken specified by the caller.  So 1/3 of a second is 3 fps, and it
-// will take up to 10 frames or so to stabilize on that value.
+// Returns a fraction of a color; abstracts the fadeToBlack away so that we can later
+// do better color correction as needed
 
-double FramesPerSecond(double seconds)
+CRGB ColorFraction(const CRGB colorIn, float fraction)
 {
-  static double framesPerSecond; 
-  framesPerSecond = (framesPerSecond * .9) + (1.0 / seconds * .1);
-  return framesPerSecond;
+  fraction = min(1.0f, fraction);
+  return CRGB(colorIn).fadeToBlackBy(255 * (1.0f - fraction));
 }
+
+// DrawPixels
+//
+// Draw a sub-pixel precise amount of pixels starting at a floating point offset; for example
+// you can draw 2.75 pixels starting a 5.5, and it will end at 8.25
+
+void DrawPixels(float fPos, float count, CRGB color)
+{
+    // Figure out how much the first pixel will hold
+    float availFirstPixel = 1.0f - (fPos - (long)(fPos));  // If we are starting at 2.25, there would be 0.75 avail here
+    float amtFirstPixel = min(availFirstPixel, count);     // But of course we never draw more than we need
+    float remaining = min(count, FastLED.size()-fPos);     // How many pixels remain after we draw the front header pixel
+    int iPos = fPos;
+
+    // Blend (add) in the color value of this first partial pixel ...and decrement the remaining pixel count by that same amount
+
+    if (remaining > 0.0f)
+    {
+      FastLED.leds()[iPos++] += ColorFraction(color, amtFirstPixel); 
+      remaining -= amtFirstPixel;                          
+    }
+
+    // Draw any full pixels and stop when we have a full pixel or less remainining
+
+    while (remaining > 1.0f)                               // Final pixel can 'handle' up to 1.0 full pixels, so we draw anything more here
+    {
+      FastLED.leds()[iPos++] += color;                     // Draw them in one at aa time and update the remaining counts
+      remaining--;
+    }  
+
+    // Draw tail pixel, up to a single full pixel
+
+    if (remaining > 0.0f)  
+    {                    
+        FastLED.leds()[iPos] += ColorFraction(color, remaining);     
+    }
+}
+
+
+#include "marquee.h"
 
 void setup() 
 {
@@ -62,47 +102,46 @@ void setup()
 
   FastLED.addLeds<WS2812B, LED_PIN, GRB>(g_LEDs, NUM_LEDS);               // Add our LED strip to the FastLED library
   FastLED.setBrightness(g_Brightness);
-
-  FastLED.setMaxPowerInMilliWatts(900);
+  set_max_power_indicator_LED(LED_BUILTIN);                               // FastLED will light LED if power limiting
+  FastLED.setMaxPowerInMilliWatts(g_PowerLimit);
 }
+
 
 void loop() 
 {
   bool bLED = 0;
-  double fps = 0;
-
-  BouncingBallEffect balls(NUM_LEDS, 5, 48, true);
+  float fps = 0;
+  byte gHue = 0;
 
   while (true)
   {
-    bLED = !bLED;                                      // Blink the LED off and on  
-    digitalWrite(LED_BUILTIN, bLED);
+    TIMES_PER_SECOND(50)
+    {
+      fadeToBlackBy(g_LEDs, NUM_LEDS, 64);
+      float pos = beatsin16(32, 0, NUM_LEDS-10);
+      byte hue = beatsin8(32, 0, 255);
+      DrawPixels(pos, 10, CHSV(0, 255, 255));
+      FastLED.show(g_Brightness);
+    }
 
-    double dStart = millis() / 1000.0;                 // Display a frame and calc how long it takes
-
-    // Draw LEDs here
-
-    balls.Draw();
-
-    // Handle OLED drawing
-
-    uint32_t milliwatts = calculate_unscaled_power_mW(g_LEDs, NUM_LEDS);   // How much power are we pulling?
-
-    static unsigned long msLastUpdate = millis();
-    if (millis() - msLastUpdate > 250)
+    /*
+    TIMES_PER_SECOND(50)
+    {
+      DrawMarqueeComparison();
+    }
+    */
+    EVERY_N_MILLISECONDS(250)
     {
       g_OLED.clearBuffer();
       g_OLED.setCursor(0, g_lineHeight);
-      g_OLED.printf("FPS  : %.1lf", fps);
+      g_OLED.printf("FPS  : %u", FastLED.getFPS());
       g_OLED.setCursor(0, g_lineHeight * 2);
-      g_OLED.printf("Power: %u mW", milliwatts);
+      g_OLED.printf("Power: %u mW", calculate_unscaled_power_mW(g_LEDs, NUM_LEDS));
+      g_OLED.setCursor(0, g_lineHeight * 3);
+      g_OLED.printf("Brite: %d", calculate_max_brightness_for_power_mW( g_Brightness, g_PowerLimit));
       g_OLED.sendBuffer();
-      msLastUpdate = millis();
     }
 
-    FastLED.show(g_Brightness);
-
-    double dEnd = millis() / 1000.0;
-    fps = FramesPerSecond(dEnd - dStart);
-  }
+    FastLED.delay(10);
+   }
 }

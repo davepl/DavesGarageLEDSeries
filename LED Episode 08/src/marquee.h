@@ -17,6 +17,19 @@
 #define FASTLED_INTERNAL
 #include <FastLED.h>
 
+void DrawMarqueeComparison()
+{
+    static float scroll = 0.0f;
+    scroll += 0.1f;
+    if (scroll > 5.0f)
+        scroll -= 5.0f;
+
+    for (float i = scroll; i < NUM_LEDS/2 - 1; i += 5)
+    {
+        DrawPixels(i, 3, CRGB::Green);
+        DrawPixels(NUM_LEDS-1-(int)i, 3, CRGB::Red);
+    }
+}
 
 void DrawMarquee()
 {
