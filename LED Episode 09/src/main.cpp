@@ -130,7 +130,7 @@ void loop()
       for (int i = iPos; i < iPos + cometSize; i++)
         g_LEDs[i] = CHSV(hue, 255, 255);
       */
-
+      FastLED.clear();
       DrawMarqueeComparison();
     }
 
