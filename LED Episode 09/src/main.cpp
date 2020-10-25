@@ -120,19 +120,8 @@ void loop()
 
   while (true)
   {
-    EVERY_N_MILLISECONDS(20)
-    {
-      /*
-      fadeToBlackBy(g_LEDs, NUM_LEDS, 64);
-      int cometSize = 5;
-      int iPos = beatsin16(32, 0, NUM_LEDS-cometSize);
-      byte hue = beatsin8(96);
-      for (int i = iPos; i < iPos + cometSize; i++)
-        g_LEDs[i] = CHSV(hue, 255, 255);
-      */
-      FastLED.clear();
-      DrawMarqueeComparison();
-    }
+    FastLED.clear();
+    // Draw here 
 
     EVERY_N_MILLISECONDS(250)
     {
@@ -147,6 +136,6 @@ void loop()
     }
 
     FastLED.setBrightness(g_Brightness);        //  Set the brightness scale
-    FastLED.delay(10);                          //  Show and delay
+    FastLED.delay(33);                          //  Show and delay
   }
 }

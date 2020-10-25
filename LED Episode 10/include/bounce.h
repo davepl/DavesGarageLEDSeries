@@ -12,8 +12,6 @@
 //
 //---------------------------------------------------------------------------
 
-#include <sys/time.h>                   // For time-of-day
-
 #include <Arduino.h>
 #define FASTLED_INTERNAL
 #include <FastLED.h>
@@ -21,9 +19,7 @@
 using namespace std;
 #include <vector>
 
-extern CRGB g_LEDs[];
-
-#define ARRAYSIZE(x) (sizeof(x)/sizeof(x[0]))   // Count elements in a static array
+#include "ledgfx.h"
 
 static const CRGB ballColors [] =
 {
@@ -56,13 +52,6 @@ class BouncingBallEffect
     vector<double> ClockTimeAtLastBounce, Height, BallSpeed, Dampening;
     vector<CRGB>   Colors;
 
-    static double Time()
-    {
-        timeval tv = { 0 };
-        gettimeofday(&tv, nullptr);
-        return (double)(tv.tv_usec / 1000000.0 + (double) tv.tv_sec);
-    }
-    
   public:
 
     // BouncingBallEffect
@@ -83,8 +72,8 @@ class BouncingBallEffect
     {
         for (size_t i = 0; i < ballCount; i++)
         {
-            Height[i]                = StartHeight;         // Current Ball Height
-            ClockTimeAtLastBounce[i] = Time();              // When ball last hit ground state
+            Height[i]                = StartHeight;                 // Current Ball Height
+            ClockTimeAtLastBounce[i] = UnixTime();                  // When ball last hit ground state
             Dampening[i]             = 0.90 - i / pow(_cBalls, 2);  // Bounciness of this ball
             BallSpeed[i]             = InitialBallSpeed(Height[i]); // Don't dampen initial launch
             Colors[i]                = ballColors[i % ARRAYSIZE(ballColors) ];
@@ -100,7 +89,7 @@ class BouncingBallEffect
         if (_fadeRate != 0)
         {
             for (size_t i = 0; i < _cLength; i++)
-                g_LEDs[i].fadeToBlackBy(_fadeRate);
+                FastLED.leds()[i].fadeToBlackBy(_fadeRate);
         }
         else
             FastLED.clear();
@@ -109,7 +98,7 @@ class BouncingBallEffect
 
         for (size_t i = 0; i < _cBalls; i++)
         {
-            double TimeSinceLastBounce = (Time() - ClockTimeAtLastBounce[i]) / SpeedKnob;
+            double TimeSinceLastBounce = (UnixTime() - ClockTimeAtLastBounce[i]) / SpeedKnob;
 
             // Use standard constant acceleration function - https://en.wikipedia.org/wiki/Acceleration
             Height[i] = 0.5 * Gravity * pow(TimeSinceLastBounce, 2.0) + BallSpeed[i] * TimeSinceLastBounce;
@@ -127,13 +116,13 @@ class BouncingBallEffect
 
             size_t position = (size_t)(Height[i] * (_cLength - 1) / StartHeight);
 
-            g_LEDs[position]   += Colors[i];
-            g_LEDs[position+1] += Colors[i];
+            FastLED.leds()[position]   += Colors[i];
+            FastLED.leds()[position+1] += Colors[i];
 
             if (_bMirrored)
             {
-                g_LEDs[_cLength - 1 - position] += Colors[i];
-                g_LEDs[_cLength - position]     += Colors[i];
+                FastLED.leds()[_cLength - 1 - position] += Colors[i];
+                FastLED.leds()[_cLength - position]     += Colors[i];
             }
         }
         delay(20);

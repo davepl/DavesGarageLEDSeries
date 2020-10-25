@@ -16,8 +16,9 @@
 #define FASTLED_INTERNAL
 #include <FastLED.h>
 
-#define NUM_COLORS 5
-static const CRGB TwinkleColors [NUM_COLORS] = 
+#include "ledgfx.h"
+
+static const CRGB TwinkleColors [] = 
 {
     CRGB::Red,
     CRGB::Blue,
@@ -28,24 +29,12 @@ static const CRGB TwinkleColors [NUM_COLORS] =
 
 void DrawTwinkle()
 {
-    FastLED.clear(false);
-
-    for (int i=0; i<NUM_LEDS/4; i++) 
-    {
-        g_LEDs[random(NUM_LEDS)] = TwinkleColors[random(0, NUM_COLORS)];
-        FastLED.show(g_Brightness);
-        delay(200);
-    }
-}
-
-void DrawTwinkle2()
-{
     static int passCount = 0;
-    if (passCount++ == NUM_LEDS/4)
+    if (passCount++ == FastLED.count()/4)
     {
         passCount = 0;
         FastLED.clear(false);
     }
-    g_LEDs[random(NUM_LEDS)] = TwinkleColors[random(0, NUM_COLORS)];
+    FastLED.leds()[random(FastLED.count())] = TwinkleColors[random(0, ARRAYSIZE(TwinkleColors))];
     delay(200);       
 }
