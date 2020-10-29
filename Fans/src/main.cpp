@@ -24,8 +24,11 @@
 #define OLED_DATA   4
 #define OLED_RESET  16
 
-#define NUM_LEDS    40          // FastLED definitions
-#define LED_PIN     5
+#define FAN_SIZE       16       // How many pixels per fan
+#define NUM_FANS       3        // Number of fans in the strans
+#define LED_FAN_OFFSET 3        // How far from 12 o'clock first pixel is
+#define NUM_LEDS       (FAN_SIZE*NUM_FANS)
+#define LED_PIN        5
 
 CRGB g_LEDs[NUM_LEDS] = {0};    // Frame buffer for FastLED
 
@@ -39,6 +42,15 @@ int g_PowerLimit = 3000;         // 900mW Power Limit
 #include "marquee.h"
 #include "twinkle.h"
 #include "fire.h"
+
+void DrawFanPixel(int iFan, float fPos, float count, CRGB color)
+{
+  long number = (long) fPos;
+  float fraction = fPos - number;
+  number = (number + LED_FAN_OFFSET + FAN_SIZE) % FAN_SIZE; 
+
+  DrawPixels(number + fraction + iFan * FAN_SIZE, count, color);
+}
 
 void setup() 
 {
@@ -70,6 +82,13 @@ void loop()
   {
     FastLED.clear();
     fire.DrawFire();
+    /*
+    float b = beat88(30)/255.0 * FAN_SIZE;
+    DrawFanPixel(0, b, 1, CRGB::Red);
+    DrawFanPixel(1, b, 1, CRGB::Green);
+    DrawFanPixel(2, b, 1, CRGB::Blue);
+    */
+
     FastLED.show(g_Brightness);                          //  Show and delay
 
     EVERY_N_MILLISECONDS(250)
