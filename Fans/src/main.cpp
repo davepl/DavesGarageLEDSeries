@@ -43,14 +43,90 @@ int g_PowerLimit = 3000;         // 900mW Power Limit
 #include "twinkle.h"
 #include "fire.h"
 
-void DrawFanPixel(int iFan, float fPos, float count, CRGB color)
+int FanPixelsVertical[FAN_SIZE] =
 {
-  long number = (long) fPos;
-  float fraction = fPos - number;
-  number = (number + LED_FAN_OFFSET + FAN_SIZE) % FAN_SIZE; 
+  0, 1, 15, 2, 14, 3, 13, 4, 12, 5, 11, 6, 10, 7, 9, 8
+};
 
-  DrawPixels(number + fraction + iFan * FAN_SIZE, count, color);
+int FanPixelsHorizontal[FAN_SIZE] =
+{
+  3, 4, 2, 5, 1, 6, 0, 7, 15, 8, 14, 9, 13, 10, 12, 11
+};
+
+enum PixelOrder
+{
+  Sequential = 0,
+  Reverse    = 1,
+  BottomUp   = 2,
+  TopDown    = 4,
+  LeftRight  = 8,
+  RigthLeft  = 16
+};
+
+int GetFanPixelOrder(int iPos, PixelOrder order = Sequential)
+{
+  while (iPos < 0)
+    iPos += FAN_SIZE;
+
+  int fanBase = (iPos % FAN_SIZE); 
+  int offset = iPos - fanBase;
+
+  switch (order)
+  {
+    case Reverse:
+      return fanBase + FAN_SIZE - offset;
+
+    case BottomUp:
+      return fanBase + FanPixelsVertical[offset];
+    
+    case TopDown:
+      return fanBase + FAN_SIZE - FanPixelsVertical[offset];
+
+    case LeftRight:
+      return fanBase + FanPixelsHorizontal[offset];
+
+    case RigthLeft:
+      return fanBase + FAN_SIZE - FanPixelsHorizontal[offset];
+
+    case Sequential:
+    default:
+      return fanBase + offset;
+
+  }
 }
+
+void DrawFanPixels(float fPos, float count, CRGB color, PixelOrder order = Sequential)
+{
+  // Calculate how much the first pixel will hold
+  float availFirstPixel = 1.0f - (fPos - (long)(fPos));
+  float amtFirstPixel = min(availFirstPixel, count);
+  float remaining = min(count, FastLED.size()-fPos);
+  int iPos = fPos;
+
+  // Blend (add) in the color of the first partial pixel
+
+  if (remaining > 0.0f)
+  {
+    FastLED.leds()[GetFanPixelOrder(iPos++, order)] += ColorFraction(color, amtFirstPixel);
+    remaining -= amtFirstPixel;
+  }
+
+  // Now draw any full pixels in the middle
+
+  while (remaining > 1.0f)
+  {
+    FastLED.leds()[GetFanPixelOrder(iPos++, order)] += color;
+    remaining--;
+  }
+
+  // Draw tail pixel, up to a single full pixel
+
+  if (remaining > 0.0f)
+  {
+    FastLED.leds()[GetFanPixelOrder(iPos, order)] += ColorFraction(color, remaining);
+  }
+}
+
 
 void setup() 
 {
@@ -81,13 +157,22 @@ void loop()
   while (true)
   {
     FastLED.clear();
+   
+    /*
     fire.DrawFire();
+    */
+
     /*
     float b = beat88(30)/255.0 * FAN_SIZE;
     DrawFanPixel(0, b, 1, CRGB::Red);
     DrawFanPixel(1, b, 1, CRGB::Green);
     DrawFanPixel(2, b, 1, CRGB::Blue);
     */
+
+    float b = beat16(10) / 65535.0 * NUM_LEDS;
+    for (int i = 0; i < b; i++)
+      DrawFanPixels(i, 1, CRGB::Red);
+
 
     FastLED.show(g_Brightness);                          //  Show and delay
 
