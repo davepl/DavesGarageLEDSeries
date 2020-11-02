@@ -60,7 +60,7 @@ class FireEffect
         delete [] heat;
     }
 
-    virtual void DrawFire()
+    virtual void DrawFire(PixelOrder order = Sequential)
     {
         // First cool each cell by a litle bit
         for (int i = 0; i < Size; i++)
@@ -91,9 +91,9 @@ class FireEffect
         {
             CRGB color = HeatColor(heat[i]);
             int j = bReversed ? (Size - 1 - i) : i;
-            DrawPixels(j, 1, color);
+            DrawFanPixels(j, 1, color, order);
             if (bMirrored)
-                DrawPixels(!bReversed ? (2 * Size - 1 - i) : Size + i, 1, color);
+                DrawFanPixels(!bReversed ? (2 * Size - 1 - i) : Size + i, 1, color, order);
         }
     }
 };

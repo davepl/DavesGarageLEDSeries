@@ -26,7 +26,7 @@
 
 #define FAN_SIZE       16       // How many pixels per fan
 #define NUM_FANS       3        // Number of fans in the strans
-#define LED_FAN_OFFSET 3        // How far from 12 o'clock first pixel is
+#define LED_FAN_OFFSET 4        // How far from 12 o'clock first pixel is
 #define NUM_LEDS       (FAN_SIZE*NUM_FANS)
 #define LED_PIN        5
 
@@ -42,90 +42,6 @@ int g_PowerLimit = 3000;         // 900mW Power Limit
 #include "marquee.h"
 #include "twinkle.h"
 #include "fire.h"
-
-int FanPixelsVertical[FAN_SIZE] =
-{
-  0, 1, 15, 2, 14, 3, 13, 4, 12, 5, 11, 6, 10, 7, 9, 8
-};
-
-int FanPixelsHorizontal[FAN_SIZE] =
-{
-  3, 4, 2, 5, 1, 6, 0, 7, 15, 8, 14, 9, 13, 10, 12, 11
-};
-
-enum PixelOrder
-{
-  Sequential = 0,
-  Reverse    = 1,
-  BottomUp   = 2,
-  TopDown    = 4,
-  LeftRight  = 8,
-  RigthLeft  = 16
-};
-
-int GetFanPixelOrder(int iPos, PixelOrder order = Sequential)
-{
-  while (iPos < 0)
-    iPos += FAN_SIZE;
-
-  int fanBase = (iPos % FAN_SIZE); 
-  int offset = iPos - fanBase;
-
-  switch (order)
-  {
-    case Reverse:
-      return fanBase + FAN_SIZE - offset;
-
-    case BottomUp:
-      return fanBase + FanPixelsVertical[offset];
-    
-    case TopDown:
-      return fanBase + FAN_SIZE - FanPixelsVertical[offset];
-
-    case LeftRight:
-      return fanBase + FanPixelsHorizontal[offset];
-
-    case RigthLeft:
-      return fanBase + FAN_SIZE - FanPixelsHorizontal[offset];
-
-    case Sequential:
-    default:
-      return fanBase + offset;
-
-  }
-}
-
-void DrawFanPixels(float fPos, float count, CRGB color, PixelOrder order = Sequential)
-{
-  // Calculate how much the first pixel will hold
-  float availFirstPixel = 1.0f - (fPos - (long)(fPos));
-  float amtFirstPixel = min(availFirstPixel, count);
-  float remaining = min(count, FastLED.size()-fPos);
-  int iPos = fPos;
-
-  // Blend (add) in the color of the first partial pixel
-
-  if (remaining > 0.0f)
-  {
-    FastLED.leds()[GetFanPixelOrder(iPos++, order)] += ColorFraction(color, amtFirstPixel);
-    remaining -= amtFirstPixel;
-  }
-
-  // Now draw any full pixels in the middle
-
-  while (remaining > 1.0f)
-  {
-    FastLED.leds()[GetFanPixelOrder(iPos++, order)] += color;
-    remaining--;
-  }
-
-  // Draw tail pixel, up to a single full pixel
-
-  if (remaining > 0.0f)
-  {
-    FastLED.leds()[GetFanPixelOrder(iPos, order)] += ColorFraction(color, remaining);
-  }
-}
 
 
 void setup() 
@@ -152,28 +68,126 @@ void loop()
 {
   bool bLED = 0;
 
-  FireEffect fire(NUM_LEDS, 20, 100, 3, NUM_LEDS, true, false);
-
   while (true)
   {
     FastLED.clear();
    
     /*
+    // RGB Spinners
+    float b = beat16(60) / 65535.0f * FAN_SIZE;
+    DrawFanPixels(b, 1, CRGB::Red, Sequential, 0);
+    DrawFanPixels(b, 1, CRGB::Green, Sequential, 1);
+    DrawFanPixels(b, 1, CRGB::Blue, Sequential, 2);
+    */
+
+    /*
+    // Left to Right Cyan Wipe
+    float b = beatsin16(60) / 65535.0f * FAN_SIZE;
+    for (int iFan = 0; iFan < NUM_FANS; iFan++)
+        DrawFanPixels(0, b, CRGB::Cyan, LeftRight, iFan);
+    */
+
+    /*
+    // Left to Right Cyan Wipe
+    float b = beatsin16(60) / 65535.0f * FAN_SIZE;
+    for (int iFan = 0; iFan < NUM_FANS; iFan++)
+        DrawFanPixels(0, b, CRGB::Cyan, RightLeft, iFan);
+    */
+
+    /*
+    // Bottom up Green Wipe
+    float b = beatsin16(60) / 65535.0f * NUM_LEDS;
+        DrawFanPixels(0, b, CRGB::Green, BottomUp);
+    */
+   
+    /*
+    // Bottom up Green Wipe
+    float b = beatsin16(60) / 65535.0f * NUM_LEDS;
+        DrawFanPixels(0, b, CRGB::Green, TopDown);
+    */
+
+    /*
+    // Simple Color Cycle
+    static byte hue = 0;
+    for (int i = 0; i < NUM_LEDS; i++)
+      DrawFanPixels(i, 1, CHSV(hue, 255, 255));
+    hue += 4;
+    */
+
+    /*
+    // Sequential Rainbows
+    static byte basehue = 0;
+    byte hue = basehue;
+    for (int i = 0; i < NUM_LEDS; i++)
+      DrawFanPixels(i, 1, CHSV(hue+=16, 255, 255));
+    basehue += 4;
+    */
+
+    /*
+    // Vertical Rainbow Wipe
+    static byte basehue = 0;
+    byte hue = basehue;
+    for (int i = 0; i < NUM_LEDS; i++)
+      DrawFanPixels(i, 1, CHSV(hue+=8, 255, 255), BottomUp);
+    basehue += 4;
+    */
+
+    /*
+    // Horizontal Rainbow Stripe
+    static byte basehue = 0;
+    byte hue = basehue;
+    for (int i = 0; i < NUM_LEDS; i++)
+      DrawFanPixels(i, 1, CHSV(hue+=16, 255, 255), LeftRight);
+    basehue += 8;
+    */
+
+    /*
+    // Rainbow Stripe Palette Effect
+    static CRGBPalette256 pal(RainbowStripeColors_p);
+    static byte baseColor = 0;
+    byte hue = baseColor;
+    for (int i = 0; i < NUM_LEDS; i++)
+      DrawFanPixels(i, 1, ColorFromPalette(pal, hue += 4), BottomUp);
+    baseColor += 1;
+    */
+
+    /*   
+    // vu-Style Meter
+    int b = beatsin16(30) * NUM_LEDS / 65535L;
+    static const CRGBPalette256 vuPaletteGreen = vu_gpGreen;
+    for (int i = 0; i < b; i++)
+        DrawFanPixels(i, 1, ColorFromPalette(vuPaletteGreen, (int)(255 * i / NUM_LEDS)), BottomUp);
+    */
+
+    /*
+    // Sequential Fire Fans
+    static FireEffect fire(NUM_LEDS, 20, 100, 3, NUM_LEDS, true, false);
     fire.DrawFire();
     */
 
     /*
-    float b = beat88(30)/255.0 * FAN_SIZE;
-    DrawFanPixel(0, b, 1, CRGB::Red);
-    DrawFanPixel(1, b, 1, CRGB::Green);
-    DrawFanPixel(2, b, 1, CRGB::Blue);
+    // Bottom Up Fire Effect with extra sparking on first fan only
+    static FireEffect fire(NUM_LEDS, 20, 140, 3, FAN_SIZE, true, false);
+    fire.DrawFire(BottomUp);
     */
 
-    float b = beat16(10) / 65535.0 * NUM_LEDS;
-    for (int i = 0; i < b; i++)
-      DrawFanPixels(i, 1, CRGB::Red);
+    /*
+    // LeftRight (Wide) Fire Effect with extra sparking on first fan only
+    static FireEffect fire(NUM_LEDS, 20, 140, 3, FAN_SIZE, true, false);
+    fire.DrawFire(LeftRight);
+    for (int i = 0; i < FAN_SIZE; i++)  // Copy end fan down onto others
+    {
+      g_LEDs[i] = g_LEDs[i + 2 * FAN_SIZE];             
+      g_LEDs[i + FAN_SIZE] = g_LEDs[i + 2 * FAN_SIZE];
+    }
+    */
 
-
+    int b = beatsin16(30) * NUM_LEDS / 65535L;
+    static const CRGBPalette256 seawhawksPalette = vu_gpSeahawks;
+    for (int i = 0; i < NUM_LEDS; i++)
+        DrawFanPixels(i, 1, ColorFromPalette(seawhawksPalette, beat8(64) + (int)(255 * i / NUM_LEDS)), BottomUp);
+    
+    
     FastLED.show(g_Brightness);                          //  Show and delay
 
     EVERY_N_MILLISECONDS(250)
