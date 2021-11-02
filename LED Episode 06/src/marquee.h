@@ -57,7 +57,7 @@ void DrawMarqueeMirrored()
     }
 
 
-    static int scroll = 0;
+    static unsigned int scroll = 0;
     scroll++;
 
     for (int i = scroll % 5; i < NUM_LEDS / 2; i += 5)
